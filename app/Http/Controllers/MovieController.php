@@ -2,64 +2,67 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\MovieResource;
 use App\Models\Movie;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class MovieController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(Request $request): AnonymousResourceCollection
     {
-        //
+        $movies = Movie::query()
+            ->where('status', 'active')
+            ->when($request->query('search'), fn ($q, $s) => $q->where('title', 'like', "%{$s}%"))
+            ->when($request->query('genre'), fn ($q, $g) => $q->where('genre', $g))
+            ->latest()
+            ->paginate(12);
+
+        return MovieResource::collection($movies);
+    }
+
+    public function show(Movie $movie): MovieResource
+    {
+        return new MovieResource($movie);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $movie = Movie::create($this->validated($request));
+
+        return (new MovieResource($movie))->response()->setStatusCode(201);
+    }
+
+    public function update(Request $request, Movie $movie): MovieResource
+    {
+        $movie->update($this->validated($request, true));
+
+        return new MovieResource($movie);
+    }
+
+    public function destroy(Movie $movie): JsonResponse
+    {
+        $movie->delete();
+
+        return response()->json(null, 204);
     }
 
     /**
-     * Show the form for creating a new resource.
+     * @return array<string, mixed>
      */
-    public function create()
+    private function validated(Request $request, bool $partial = false): array
     {
-        //
-    }
+        $required = $partial ? 'sometimes' : 'required';
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(Movie $movie)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Movie $movie)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Movie $movie)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Movie $movie)
-    {
-        //
+        return $request->validate([
+            'title' => [$required, 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'duration_minutes' => [$required, 'integer', 'min:1', 'max:600'],
+            'genre' => ['nullable', 'string', 'max:100'],
+            'rating' => ['nullable', 'string', 'max:20'],
+            'poster_url' => ['nullable', 'string', 'max:2048'],
+            'status' => ['sometimes', 'in:active,archived'],
+        ]);
     }
 }
