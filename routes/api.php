@@ -2,13 +2,17 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\MovieController;
+use App\Http\Controllers\SeatMapController;
+use App\Http\Controllers\ShowtimeController;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/showtime/{showtime}/seat', [SeatMapController::class, 'show'])->name('showtime.seat');
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 
 Route::get('/movies', [MovieController::class, 'index'])->name('movies.index');
 Route::get('/movies/{movie}', [MovieController::class, 'show'])->name('movies.show');
+Route::get('/showtimes', [ShowtimeController::class, 'index'])->name('showtimes.index');
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/me', [AuthController::class, 'me'])->name('me');
